@@ -1,0 +1,91 @@
+---
+- hosts: web_servers
+  become: true
+  pre_tasks:
+    - name: dpkg for Ubuntu
+      shell:
+        dpkg --configure -a
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install Docker (Ubuntu)
+      apt:
+        name: docker.io
+        state: latest
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install SDK (Ubuntu)
+      shell:
+        pip install docker-py
+
+    - name: Ensure Docker group exists (Ubuntu)
+      group:
+        name: docker
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Adding user to Docker group (Ubuntu)
+      user:
+        name: gomez
+        groups: docker
+        append: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Enable/Restart Docker (Ubuntu)
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Creating Directory for Dockerfile (Ubuntu)
+      file:
+        path: /root/demo-dockerfile
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Importing Dockerfile (Ubuntu)
+      copy:
+        src: dockerfile
+        dest: /root/demo-dockerfile/dockerfile
+        owner: root
+        group: root
+        mode: '0755'
+      when: ansible_distribution == "Ubuntu"
+
+- hosts: db_servers
+  become: true
+  pre_tasks:
+    - name: Install required packages (CentOS)
+      yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+      when: ansible_distribution == "CentOS"
+
+    - name: Add Docker repository (CentOS)
+      yum_repository:
+        name: docker-ce
+        description: Docker CE Stable - $basearch
+        baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        enabled: yes
+      when: ansible_distribution == "CentOS"
+
+    - name: Install Docker (CentOS)
+      yum:
+        name: docker-ce
+        state: present
+      when: ansible_distribution == "CentOS"
+
+    - name: Start and enable Docker service (CentOS)
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      when: ansible_distribution == "CentOS"
+
